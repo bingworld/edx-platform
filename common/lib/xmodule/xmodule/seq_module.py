@@ -128,6 +128,7 @@ class ProctoringFields(object):
 
 
 @XBlock.wants('proctoring')
+@XBlock.wants('milestones')
 @XBlock.wants('credit')
 @XBlock.needs("user")
 @XBlock.needs("bookmarks")
@@ -242,6 +243,13 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
             contents.append(childinfo)
 
+        milestones_service = self.runtime.service(self, 'milestones')
+        content_milestones = False
+        if milestones_service:
+            content_milestones = milestones_service.get_course_content_milestones(
+                self.course_id, self.location, 'requires'
+            )
+
         params = {
             'items': contents,
             'element_id': self.location.html_id(),
@@ -252,6 +260,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             'next_url': context.get('next_url'),
             'prev_url': context.get('prev_url'),
             'override_hidden_exam': masquerading and special_exam_html is not None,
+            'gated_banner': content_milestones and self.runtime.user_is_staff,
         }
 
         fragment.add_content(self.system.render_template("seq_module.html", params))
