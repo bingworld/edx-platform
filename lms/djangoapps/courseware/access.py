@@ -20,7 +20,7 @@ from django.utils.timezone import UTC
 
 from opaque_keys.edx.keys import CourseKey, UsageKey
 
-from util import milestones_helpers as milestones_helpers
+from util import milestones_helpers
 from xblock.core import XBlock
 
 from xmodule.course_module import (
