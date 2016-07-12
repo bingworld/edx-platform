@@ -1,10 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-Hello World
-</body>
-</html>
+## Override the default styles_version to the Pattern Library version (version 2)
+<%! main_css = "style-main-v2" %>
+
+<%page expression_filter="h"/>
+<%inherit file="/main.html" />
+
+<%block name="pagetitle">Preview Language Setting</%block>
+<%block name="nav_skip"></%block>
+
+<%block name="bodyclass">pattern-library</%block>
+
+<%block name="content">
+<h1>Preview Language Setting</h1>
+
+<div tabindex="-1">
+    <form class="form" action="/update_lang/" method="post">
+        <fieldset class="form-group">
+            <div class="field">
+                <label class="field-label" for="input_language">Language Abbreviation</label>
+                <input class="field-input input-text" type="text" id="input_language" name="input_language"
+                       placeholder="e.g. en" aria-describedby="Input abbreviation for your language of choice" />
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button class="btn-brand btn-base" type="submit" name="reset" value="reset">Reset Language</button>
+            <button class="btn-brand btn-base" type="submit" name="set_language" value="set_language">Set Preview Language</button>
+        </div>
+
+        <input type="hidden" name="csrfmiddlewaretoken" value="${ csrf_token }"/>
+    </form>
+
+    % if not set_language_code is UNDEFINED:
+        <h3>Langauge set to ${set_language_code}</h3>
+    % endif
+</div>
+</%block>
