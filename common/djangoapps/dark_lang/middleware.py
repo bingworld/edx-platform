@@ -120,8 +120,3 @@ class DarkLangMiddleware(object):
 
         # Set the session key to the requested preview lang
         request.session[LANGUAGE_SESSION_KEY] = preview_lang
-
-        # Make sure that we set the requested preview lang as the dark lang preference for the
-        # user, so that the lang_pref middleware doesn't clobber away the dark lang preview.
-        if auth_user:
-            set_user_preference(request.user, DARK_LANGUAGE_KEY, preview_lang)

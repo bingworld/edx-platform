@@ -100,6 +100,11 @@ class Darklang(object):
         return 'Language set to %s' % preview_lang
 
     def clear_preview_language(self, request):
+        """
+        Clears the dark language preview
+        :param request: The incoming Django Request
+        :return: The Response message
+        """
         auth_user = request.user.is_authenticated()
 
         # delete the session language key (if one is set)
