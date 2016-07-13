@@ -1133,6 +1133,11 @@ MIDDLEWARE_CLASSES = (
     # Allows us to set user preferences
     'lang_pref.middleware.LanguagePreferenceMiddleware',
 
+    # Allows us to dark-launch particular languages.
+    # Must be after LangPrefMiddleware, so ?preview-lang query params can override
+    # user's language preference. ?clear-lang resets to user's language preference.
+    'dark_lang.middleware.DarkLangMiddleware',
+
     # Detects user-requested locale from 'accept-language' header in http request.
     # Must be after DarkLangMiddleware.
     'django.middleware.locale.LocaleMiddleware',

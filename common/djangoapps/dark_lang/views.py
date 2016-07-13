@@ -6,9 +6,8 @@ from django.views.generic.base import View
 
 from edxmako.shortcuts import render_to_response
 
-LANGUAGE_INPUT_FIELD = 'input_language'
-RESET_SUBMIT = 'reset'
-SET_LANGUAGE_SUBMIT = 'set_language'
+from .darklang import Darklang
+
 SET_LANGUAGE_CODE = 'set_language_code'
 
 @view_auth_classes()
@@ -36,7 +35,6 @@ class DarkLangView(View):
             'disable_courseware_js': True,
             'uses_pattern_library': True
         }
-
         return render_to_response(self.template_name, context)
 
     def post(self, request):
@@ -44,13 +42,10 @@ class DarkLangView(View):
             'disable_courseware_js': True,
             'uses_pattern_library': True
         }
-
-        post_data = request.POST
-
-        if RESET_SUBMIT in post_data:
-            # TODO Clear the language setting
-            context.update({SET_LANGUAGE_CODE: 'RESET'})
-        if SET_LANGUAGE_SUBMIT in post_data and LANGUAGE_INPUT_FIELD in post_data:
-                context.update({SET_LANGUAGE_CODE: post_data[LANGUAGE_INPUT_FIELD]})
-
+        darklang = Darklang()
+        result = darklang.process_darklang_request(request)
+        if result is not None:
+            context.update({SET_LANGUAGE_CODE: result})
         return render_to_response(self.template_name, context)
+
+
