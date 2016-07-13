@@ -61,7 +61,7 @@ class LMSInstructorDashboardA11yTest(BaseInstructorDashboardTest):
         self.instructor_dashboard_page.a11y_audit.config.set_rules({
             "ignore": [
                 'checkboxgroup',  # TODO: AC-552
-                'link-href',  # TODO: AC-491
+                'link-href',  # TODO: TNL-4989
             ]
         })
         self.instructor_dashboard_page.a11y_audit.check_for_accessibility_errors()
