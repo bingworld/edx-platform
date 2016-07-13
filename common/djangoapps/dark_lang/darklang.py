@@ -62,14 +62,9 @@ class Darklang(object):
         if not DarkLangConfig.current().enabled:
             return None
 
-        # self._clean_accept_headers(request)
-
         if RESET_SUBMIT in request.POST:
             # Reset and clear the language preference
-            # TODO Clear the language setting
-            # context.update({SET_LANGUAGE_CODE: 'RESET'})
-            self.clear_preview_language(request)
-            return None
+            return 'Language reset to %s' % self.clear_preview_language(request)
         if SET_LANGUAGE_SUBMIT in request.POST:
             # Set the Preview Language
             return self.set_preview_language(request)
@@ -83,14 +78,17 @@ class Darklang(object):
         :return dark language setting code
         """
         if not DarkLangConfig.current().enabled:
-            return
-
-        auth_user = request.user.is_authenticated()
+            return None
 
         if LANGUAGE_INPUT_FIELD not in request.POST:
             return None
 
         preview_lang = request.POST[LANGUAGE_INPUT_FIELD]
+
+        if preview_lang == '':
+            return None
+
+        auth_user = request.user.is_authenticated()
 
         # Set the session key to the requested preview lang
         request.session[LANGUAGE_SESSION_KEY] = preview_lang
@@ -99,7 +97,7 @@ class Darklang(object):
         # user, so that the lang_pref middleware doesn't clobber away the dark lang preview.
         if auth_user:
             set_user_preference(request.user, DARK_LANGUAGE_KEY, preview_lang)
-        return preview_lang
+        return 'Language set to %s' % preview_lang
 
     def clear_preview_language(self, request):
         auth_user = request.user.is_authenticated()
@@ -115,7 +113,7 @@ class Darklang(object):
             user_pref = get_user_preference(request.user, LANGUAGE_KEY)
             if user_pref:
                 request.session[LANGUAGE_SESSION_KEY] = user_pref
-        return
+        return user_pref
 
     def fuzzy_match(self, lang_code):
         """Returns a fuzzy match for lang_code"""

@@ -3,12 +3,15 @@ Views file for the Darklang Django App
 """
 from openedx.core.lib.api.view_utils import view_auth_classes
 from django.views.generic.base import View
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+
 
 from edxmako.shortcuts import render_to_response
 
 from .darklang import Darklang
 
-SET_LANGUAGE_CODE = 'set_language_code'
+FORM_SET_MESSAGE = 'form_submit_message'
 
 @view_auth_classes()
 class DarkLangView(View):
@@ -25,6 +28,7 @@ class DarkLangView(View):
     """
     template_name = 'darklang/preview_lang.html'
 
+    @method_decorator(login_required)
     def get(self, request, error=None):
         """
         Displays the Form for setting/resetting a User's dark language setting
@@ -37,6 +41,7 @@ class DarkLangView(View):
         }
         return render_to_response(self.template_name, context)
 
+    @method_decorator(login_required)
     def post(self, request):
         context = {
             'disable_courseware_js': True,
@@ -45,7 +50,7 @@ class DarkLangView(View):
         darklang = Darklang()
         result = darklang.process_darklang_request(request)
         if result is not None:
-            context.update({SET_LANGUAGE_CODE: result})
+            context.update({FORM_SET_MESSAGE: result})
         return render_to_response(self.template_name, context)
 
 
