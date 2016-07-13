@@ -22,7 +22,7 @@ from lang_pref import LANGUAGE_KEY
 from django.utils.translation.trans_real import parse_accept_lang_header
 from django.utils.translation import LANGUAGE_SESSION_KEY
 
-from .darklang import Darklang
+from .api import Darklang
 
 def dark_parse_accept_lang_header(accept):
     '''

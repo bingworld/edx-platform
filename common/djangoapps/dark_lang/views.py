@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 
 from edxmako.shortcuts import render_to_response
 
-from .darklang import Darklang
+from .api import Darklang
 
 FORM_SET_MESSAGE = 'form_submit_message'
 
