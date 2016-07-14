@@ -121,8 +121,7 @@ class IntegrationTestLTI(testutil.TestCase):
     def test_reject_bad_login(self):
         login_response = self.client.post(
             path=LTI_TPA_LOGIN_URL, content_type=FORM_ENCODED,
-            data="oauth_consumer_key=12345&oauth_signature_method=HMAC-SHA1&"
-                 "oauth_signature=STPWUouDw%2FlRGD4giWf8lpGTc54%3D&oauth_timestamp=1436823553&oauth_version=1.0"
+            data="invalid=login",
         )
         # The user should be redirected to the login page with an error message
         # (auth_entry defaults to login for this provider)

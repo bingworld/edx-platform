@@ -44,11 +44,14 @@ class LTIAuthBackend(BaseAuth):
         # Clean any partial pipeline data
         self.strategy.clean_partial_pipeline()
 
-        # Save validated LTI parameters (or None if invalid or not submitted)
-        validated_lti_params = self.get_validated_lti_params(self.strategy)
-
         # Set a auth_entry here so we don't have to receive that as a custom parameter
         self.strategy.session_setdefault('auth_entry', 'login')
+
+        # Save validated LTI parameters (or None if invalid or not submitted)
+        try:
+            validated_lti_params = self.get_validated_lti_params(self.strategy)
+        except AttributeError:
+            raise AuthFailed(self, "LTI parameters could not be validated.")
 
         if not validated_lti_params:
             self.strategy.session_set(LTI_PARAMS_KEY, None)
