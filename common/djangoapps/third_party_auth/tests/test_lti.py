@@ -120,14 +120,33 @@ class UnitTestLTI(unittest.TestCase, ThirdPartyAuthTestMixin):
         self.assertFalse(parameters)
 
     def test_validate_lti_garbage(self):
+        """
+        Tests LTI param validation raises AttributeError if mandatory oauth parameters are not provided
+        """
         request = Request(
             uri='https://example.com/lti',
             http_method='POST',
             body=self.read_data_file('lti_garbage.txt')
+        )
+        with self.assertRaises(AttributeError):
+            LTIAuthBackend._get_validated_lti_params_from_values(  # pylint: disable=protected-access
+                request=request, current_time=1436823554,
+                lti_consumer_valid=True, lti_consumer_secret='secret',
+                lti_max_timestamp_age=10
+            )
+
+    def test_validate_lti_invalid_values(self):
+        """
+        Tests LTI param validation returns None if invalid values for oauth parameters are provided
+        """
+        request = Request(
+            uri='https://example.com/lti',
+            http_method='POST',
+            body=self.read_data_file('lti_invalid_values.txt')
         )
         parameters = LTIAuthBackend._get_validated_lti_params_from_values(  # pylint: disable=protected-access
             request=request, current_time=1436823554,
             lti_consumer_valid=True, lti_consumer_secret='secret',
             lti_max_timestamp_age=10
         )
-        self.assertFalse(parameters)
+        self.assertIsNone(parameters)

@@ -1,0 +1,1 @@
+oauth_signature_method=HMAC-SHA1&oauth_signature=STPWUouDw%2FlRGD4giWf8lpGTc54%3D&oauth_timestamp=1436823553&oauth_version=1.0
