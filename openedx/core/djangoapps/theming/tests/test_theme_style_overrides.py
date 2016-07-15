@@ -4,10 +4,13 @@
 import unittest
 
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.test import TestCase, override_settings
 from django.contrib import staticfiles
 
 from openedx.core.djangoapps.theming.tests.test_util import with_comprehensive_theme
+
+from student.tests.factories import UserFactory
 
 
 @unittest.skipUnless(settings.ROOT_URLCONF == 'lms.urls', 'Test only valid in lms')
@@ -34,6 +37,36 @@ class TestComprehensiveThemeLMS(TestCase):
         self.assertEqual(resp.status_code, 200)
         # This string comes from header.html of test-theme
         self.assertContains(resp, "This is a footer for test-theme.")
+
+    @with_comprehensive_theme("edx.org")
+    def test_header_no_mktg_links(self):
+        """
+        Test that theme header doesn't show marketing site links for Account Settings page.
+        """
+        # Login
+        user = UserFactory.create()
+        result = self.client.login(username=user.username, password='test')
+        self.assertTrue(result)
+
+        account_settings_url = reverse('account_settings')
+        resp = self.client.get(account_settings_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "How it Works")
+
+    @with_comprehensive_theme("edx.org")
+    def test_header_with_mktg_links(self):
+        """
+        Test that theme header show marketing site links for Profile page.
+        """
+        # Login
+        user = UserFactory.create()
+        result = self.client.login(username=user.username, password='test')
+        self.assertTrue(result)
+
+        profile_url = reverse('learner_profile', kwargs={'username': user.username})
+        resp = self.client.get(profile_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "How it Works")
 
     @with_comprehensive_theme("test-theme")
     def test_logo_image(self):

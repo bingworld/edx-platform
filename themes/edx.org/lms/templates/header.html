@@ -72,7 +72,7 @@ site_status_msg = get_site_status_msg(course_id)
         % if not nav_hidden or show_program_listing:
           <nav aria-label="Main" class="nav-main">
             <ul class="left list-inline nav-global authenticated">
-              % if not nav_hidden:
+              % if is_account_settings_page is UNDEFINED and not nav_hidden:
                 <%block name="navigation_global_links_authenticated">
                   <li class="item nav-global-01">
                     <a href="${marketing_link('HOW_IT_WORKS')}">${_("How it Works")}</a>
