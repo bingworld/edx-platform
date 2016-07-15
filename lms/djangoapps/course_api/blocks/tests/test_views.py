@@ -20,7 +20,7 @@ class TestBlocksView(SharedModuleStoreTestCase):
     """
     Test class for BlocksView
     """
-    requested_fields = ['graded', 'format', 'student_view_multi_device', 'children', 'not_a_field']
+    requested_fields = ['graded', 'format', 'student_view_multi_device', 'children', 'not_a_field', 'due']
     BLOCK_TYPES_WITH_STUDENT_VIEW_DATA = ['video', 'discussion']
 
     @classmethod
@@ -103,6 +103,7 @@ class TestBlocksView(SharedModuleStoreTestCase):
             self.assert_in_iff('children', block_data, xblock.has_children)
             self.assert_in_iff('graded', block_data, xblock.graded is not None)
             self.assert_in_iff('format', block_data, xblock.format is not None)
+            self.assert_in_iff('due', block_data, xblock.due is not None)
             self.assert_true_iff(block_data['student_view_multi_device'], block_data['type'] == 'html')
             self.assertNotIn('not_a_field', block_data)
 
