@@ -2,7 +2,7 @@
 from django.utils.translation import ugettext as _
 from django.core.urlresolvers import reverse
 %>
-<%page args="online_help_token"/>
+<%page expression_filter="h" args="online_help_token"/>
 <div class="wrapper-sock wrapper">
   <ul class="list-actions list-cta">
     <li class="action-item">
