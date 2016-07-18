@@ -10,14 +10,11 @@ in the user's session.
 This middleware must be placed before the LocaleMiddleware, but after
 the SessionMiddleware.
 """
-from django.conf import settings
-
 from dark_lang import DARK_LANGUAGE_KEY
 from dark_lang.models import DarkLangConfig
 from openedx.core.djangoapps.user_api.preferences.api import (
-    delete_user_preference, get_user_preference, set_user_preference
+    get_user_preference
 )
-from lang_pref import LANGUAGE_KEY
 
 from django.utils.translation import LANGUAGE_SESSION_KEY
 
