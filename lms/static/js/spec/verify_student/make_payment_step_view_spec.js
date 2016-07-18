@@ -142,6 +142,39 @@ define([
                 expectPaymentSubmitted( view, {foo: 'bar'} );
             });
 
+            it ('view containing verification msg when verification deadline is set and user is active', function() {
+                createView({
+                    userEmail: 'test@example.com',
+                    requirements: {
+                        isVisible:true
+                    },
+                    verificationDeadline: true,
+                    isActive: true
+                });
+                // Verify user does not get user activation message when he is already activated.
+                expect($('p.instruction-info:contains("test@example.com")').length).toEqual(0);
+                // Verify user gets verification message.
+                expect(
+                    $(
+                        'p.instruction-info:contains("You can pay now even if you don\'t have ' +
+                        'the following items available, but you will need to have these by")'
+                    ).length
+                ).toEqual(1);
+            });
+
+            it ('view containing user email when course verification deadline is set', function() {
+                createView({
+                    userEmail: 'test@example.com',
+                    requirements: {
+                        isVisible:true
+                    },
+                    verificationDeadline: true,
+                    isActive: false
+                });
+                // Verify un-activated user gets activation message.
+                expect($('p.instruction-info:contains("test@example.com")').length).toEqual(1);
+            });
+
             it ('view containing user email', function() {
                 createView({userEmail: 'test@example.com', requirements: {isVisible:true}, isActive: false});
                 expect($('p.instruction-info:contains("test@example.com")').length).toEqual(1);
