@@ -18,6 +18,25 @@ from django.utils.translation import LANGUAGE_SESSION_KEY
 from dark_lang import DARK_LANGUAGE_KEY
 from dark_lang.models import DarkLangConfig
 
+def dark_parse_accept_lang_header(accept):
+    '''
+    The use of 'zh-cn' for 'Simplified Chinese' and 'zh-tw' for 'Traditional Chinese'
+    are now deprecated, as discussed here: https://code.djangoproject.com/ticket/18419.
+    The new language codes 'zh-hans' and 'zh-hant' are now used since django 1.7.
+    Although majority of browsers still use the old language codes, some new browsers
+    such as IE11 in Windows 8.1 start to use the new ones, which makes the current
+    chinese translations of edX don't work properly under these browsers.
+    This function can keep compatibility between the old and new language codes. If one
+    day edX uses django 1.7 or higher, this function can be modified to support the old
+    language codes until there are no browsers use them.
+    '''
+    browser_langs = parse_accept_lang_header(accept)
+    django_langs = []
+    for lang, priority in browser_langs:
+        lang = CHINESE_LANGUAGE_CODE_MAP.get(lang.lower(), lang)
+        django_langs.append((lang, priority))
+
+    return django_langs
 
 # If django 1.7 or higher is used, the right-side can be updated with new-style codes.
 CHINESE_LANGUAGE_CODE_MAP = {
@@ -153,3 +172,29 @@ class Darklang(object):
         return django_langs
 
 
+    def _format_accept_value(self, lang, priority=1.0):
+        """
+        Formats lang and priority into a valid accept header fragment.
+        """
+        return "{};q={}".format(lang, priority)
+
+
+    def clean_accept_headers(self, request):
+        """
+        Remove any language that is not either in ``self.released_langs`` or
+        a territory of one of those languages.
+        """
+        accept = request.META.get('HTTP_ACCEPT_LANGUAGE', None)
+        if accept is None or accept == '*':
+            return
+
+        new_accept = []
+        darklang = Darklang()
+        for lang, priority in dark_parse_accept_lang_header(accept):
+            fuzzy_code = darklang.fuzzy_match(lang.lower())
+            if fuzzy_code:
+                new_accept.append(self._format_accept_value(fuzzy_code, priority))
+
+        new_accept = ", ".join(new_accept)
+
+        request.META['HTTP_ACCEPT_LANGUAGE'] = new_accept

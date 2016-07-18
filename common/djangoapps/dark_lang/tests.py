@@ -10,6 +10,7 @@ from mock import Mock
 import unittest
 
 from dark_lang.middleware import DarkLangMiddleware
+from dark_lang.api import Darklang
 from dark_lang.models import DarkLangConfig
 from django.utils.translation import LANGUAGE_SESSION_KEY
 from student.tests.factories import UserFactory
@@ -42,7 +43,34 @@ class DarkLangMiddlewareTests(TestCase):
             enabled=True
         ).save()
 
-    def process_request(self, language_session_key=UNSET, accept=UNSET, preview_lang=UNSET, clear_lang=UNSET):
+    def process_post(self, language_session_key=UNSET, accept=UNSET, preview_lang=UNSET, clear_lang=UNSET):
+        session = {}
+        set_if_set(session, LANGUAGE_SESSION_KEY, language_session_key)
+
+        meta = {}
+        set_if_set(meta, 'HTTP_ACCEPT_LANGUAGE', accept)
+
+        post = {}
+        set_if_set(post, 'preview_lang', preview_lang)
+
+        if clear_lang is True:
+            set_if_set(post, 'reset', 'reset')
+        else:
+            set_if_set(post, 'set_language', 'set_language')
+
+        request = Mock(
+            spec=HttpRequest,
+            session=session,
+            META=meta,
+            POST=post,
+            user=UserFactory()
+        )
+
+        # Process the incoming request to set the Language
+        Darklang().process_darklang_request(request)
+        return request
+
+    def process_middleware_request(self, language_session_key=UNSET, accept=UNSET, post_request=None):
         """
         Build a request and then process it using the ``DarkLangMiddleware``.
 
@@ -53,22 +81,31 @@ class DarkLangMiddlewareTests(TestCase):
             clear_lang (str): The value to set in request.GET['clear_lang']
         """
         session = {}
-        set_if_set(session, LANGUAGE_SESSION_KEY, language_session_key)
+        if post_request:
+            session = post_request.session
+        else:
+            set_if_set(session, LANGUAGE_SESSION_KEY, language_session_key)
 
         meta = {}
         set_if_set(meta, 'HTTP_ACCEPT_LANGUAGE', accept)
 
-        get = {}
-        set_if_set(get, 'preview-lang', preview_lang)
-        set_if_set(get, 'clear-lang', clear_lang)
+        # post = {}
+        # set_if_set(post, 'preview_lang', preview_lang)
+
+        # if clear_lang is True:
+        #     set_if_set(post, 'reset', 'reset')
+        # else:
+        #     set_if_set(post, 'set_language', 'set_language')
 
         request = Mock(
             spec=HttpRequest,
             session=session,
             META=meta,
-            GET=get,
+            GET={},
             user=UserFactory()
         )
+
+        # Process it through the Middleware to ensure the language is available as expected.
         self.assertIsNone(DarkLangMiddleware().process_request(request))
         return request
 
@@ -83,31 +120,31 @@ class DarkLangMiddlewareTests(TestCase):
         )
 
     def test_empty_accept(self):
-        self.assertAcceptEquals(UNSET, self.process_request())
+        self.assertAcceptEquals(UNSET, self.process_middleware_request())
 
     def test_wildcard_accept(self):
-        self.assertAcceptEquals('*', self.process_request(accept='*'))
+        self.assertAcceptEquals('*', self.process_middleware_request(accept='*'))
 
     def test_malformed_accept(self):
-        self.assertAcceptEquals('', self.process_request(accept='xxxxxxxxxxxx'))
-        self.assertAcceptEquals('', self.process_request(accept='en;q=1.0, es-419:q-0.8'))
+        self.assertAcceptEquals('', self.process_middleware_request(accept='xxxxxxxxxxxx'))
+        self.assertAcceptEquals('', self.process_middleware_request(accept='en;q=1.0, es-419:q-0.8'))
 
     def test_released_accept(self):
         self.assertAcceptEquals(
             'rel;q=1.0',
-            self.process_request(accept='rel;q=1.0')
+            self.process_middleware_request(accept='rel;q=1.0')
         )
 
     def test_unreleased_accept(self):
         self.assertAcceptEquals(
             'rel;q=1.0',
-            self.process_request(accept='rel;q=1.0, unrel;q=0.5')
+            self.process_middleware_request(accept='rel;q=1.0, unrel;q=0.5')
         )
 
     def test_accept_with_syslang(self):
         self.assertAcceptEquals(
             'en;q=1.0, rel;q=0.8',
-            self.process_request(accept='en;q=1.0, rel;q=0.8, unrel;q=0.5')
+            self.process_middleware_request(accept='en;q=1.0, rel;q=0.8, unrel;q=0.5')
         )
 
     def test_accept_multiple_released_langs(self):
@@ -119,17 +156,17 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             'rel;q=1.0, unrel;q=0.5',
-            self.process_request(accept='rel;q=1.0, unrel;q=0.5')
+            self.process_middleware_request(accept='rel;q=1.0, unrel;q=0.5')
         )
 
         self.assertAcceptEquals(
             'rel;q=1.0, unrel;q=0.5',
-            self.process_request(accept='rel;q=1.0, notrel;q=0.3, unrel;q=0.5')
+            self.process_middleware_request(accept='rel;q=1.0, notrel;q=0.3, unrel;q=0.5')
         )
 
         self.assertAcceptEquals(
             'rel;q=1.0, unrel;q=0.5',
-            self.process_request(accept='notrel;q=0.3, rel;q=1.0, unrel;q=0.5')
+            self.process_middleware_request(accept='notrel;q=0.3, rel;q=1.0, unrel;q=0.5')
         )
 
     def test_accept_released_territory(self):
@@ -138,13 +175,13 @@ class DarkLangMiddlewareTests(TestCase):
         # (Otherwise, the user will actually end up getting the server default)
         self.assertAcceptEquals(
             'rel;q=1.0, rel;q=0.5',
-            self.process_request(accept='rel-ter;q=1.0, rel;q=0.5')
+            self.process_middleware_request(accept='rel-ter;q=1.0, rel;q=0.5')
         )
 
     def test_accept_mixed_case(self):
         self.assertAcceptEquals(
             'rel;q=1.0, rel;q=0.5',
-            self.process_request(accept='rel-TER;q=1.0, REL;q=0.5')
+            self.process_middleware_request(accept='rel-TER;q=1.0, REL;q=0.5')
         )
 
         DarkLangConfig(
@@ -157,7 +194,7 @@ class DarkLangMiddlewareTests(TestCase):
         # fuzzy match to "rel-ter", in addition to "rel-ter" exact matching "rel-ter"
         self.assertAcceptEquals(
             'rel-ter;q=1.0, rel-ter;q=0.5',
-            self.process_request(accept='rel-ter;q=1.0, rel;q=0.5')
+            self.process_middleware_request(accept='rel-ter;q=1.0, rel;q=0.5')
         )
 
     @ddt.data(
@@ -175,7 +212,7 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             expected,
-            self.process_request(accept=accept_header)
+            self.process_middleware_request(accept=accept_header)
         )
 
     def test_partial_match_esar_es(self):
@@ -188,7 +225,7 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             'es;q=1.0',
-            self.process_request(accept='es-AR;q=1.0, pt;q=0.5')
+            self.process_middleware_request(accept='es-AR;q=1.0, pt;q=0.5')
         )
 
     @ddt.data(
@@ -207,7 +244,7 @@ class DarkLangMiddlewareTests(TestCase):
         ).save()
         self.assertAcceptEquals(
             expected,
-            self.process_request(accept=accept_header)
+            self.process_middleware_request(accept=accept_header)
         )
 
     @unittest.skip("This won't work until fallback is implemented for LA country codes. See LOC-86")
@@ -229,7 +266,7 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             'es-419;q=1.0',
-            self.process_request(accept='{};q=1.0, pt;q=0.5'.format(latin_america_code))
+            self.process_middleware_request(accept='{};q=1.0, pt;q=0.5'.format(latin_america_code))
         )
 
     def assertSessionLangEquals(self, value, request):
@@ -243,41 +280,48 @@ class DarkLangMiddlewareTests(TestCase):
 
     def test_preview_lang_with_released_language(self):
         # Preview lang should always override selection.
+        post_request = self.process_post(preview_lang='rel')
         self.assertSessionLangEquals(
             'rel',
-            self.process_request(preview_lang='rel')
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(preview_lang='rel', language_session_key='notrel')
         self.assertSessionLangEquals(
             'rel',
-            self.process_request(preview_lang='rel', language_session_key='notrel')
+            self.process_middleware_request(post_request=post_request)
         )
 
     def test_preview_lang_with_dark_language(self):
+        post_request = self.process_post(preview_lang='unrel')
         self.assertSessionLangEquals(
             'unrel',
-            self.process_request(preview_lang='unrel')
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(preview_lang='unrel')
         self.assertSessionLangEquals(
             'unrel',
-            self.process_request(preview_lang='unrel', language_session_key='notrel')
+            self.process_middleware_request(language_session_key='notrel', post_request=post_request)
         )
 
     def test_clear_lang(self):
+        post_request = self.process_post(clear_lang=True)
         self.assertSessionLangEquals(
             UNSET,
-            self.process_request(clear_lang=True)
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(language_session_key='rel', clear_lang=True)
         self.assertSessionLangEquals(
             UNSET,
-            self.process_request(clear_lang=True, language_session_key='rel')
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(language_session_key='unrel', clear_lang=True)
         self.assertSessionLangEquals(
             UNSET,
-            self.process_request(clear_lang=True, language_session_key='unrel')
+            self.process_middleware_request(post_request=post_request)
         )
 
     def test_disabled(self):
@@ -285,22 +329,25 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             'notrel;q=0.3, rel;q=1.0, unrel;q=0.5',
-            self.process_request(accept='notrel;q=0.3, rel;q=1.0, unrel;q=0.5')
+            self.process_middleware_request(accept='notrel;q=0.3, rel;q=1.0, unrel;q=0.5')
         )
 
+        post_request = self.process_post(language_session_key='rel', clear_lang=True)
         self.assertSessionLangEquals(
             'rel',
-            self.process_request(clear_lang=True, language_session_key='rel')
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(language_session_key='unrel', clear_lang=True)
         self.assertSessionLangEquals(
             'unrel',
-            self.process_request(clear_lang=True, language_session_key='unrel')
+            self.process_middleware_request(post_request=post_request)
         )
 
+        post_request = self.process_post(language_session_key='rel', preview_lang='unrel')
         self.assertSessionLangEquals(
             'rel',
-            self.process_request(preview_lang='unrel', language_session_key='rel')
+            self.process_middleware_request(post_request=post_request)
         )
 
     def test_accept_chinese_language_codes(self):
@@ -312,5 +359,5 @@ class DarkLangMiddlewareTests(TestCase):
 
         self.assertAcceptEquals(
             'zh-cn;q=1.0, zh-tw;q=0.5, zh-hk;q=0.3',
-            self.process_request(accept='zh-Hans;q=1.0, zh-Hant-TW;q=0.5, zh-HK;q=0.3')
+            self.process_middleware_request(accept='zh-Hans;q=1.0, zh-Hant-TW;q=0.5, zh-HK;q=0.3')
         )
