@@ -20,8 +20,7 @@
                     return {
                         course_image_url: runModes[0].course_image_url,
                         marketing_url: runModes[0].marketing_url,
-                        is_enrollment_open: runModes[0].is_enrollment_open,
-                        enrollment_open_date: runModes[0].enrollment_open_date
+                        is_enrollment_open: runModes[0].is_enrollment_open
                     };
                 }
                 return {};
@@ -67,7 +66,6 @@
                         display_name: this.context.display_name,
                         end_date: runMode.end_date,
                         enrollable_run_modes: this.getEnrollableRunModes(),
-                        enrollment_open_date: runMode.enrollment_open_date || '',
                         is_course_ended: runMode.is_course_ended,
                         is_enrolled: runMode.is_enrolled,
                         is_enrollment_open: runMode.is_enrollment_open,

@@ -46,13 +46,7 @@
         </button>
     <% } else {%>
         <div class="no-action-message">
-            <%- gettext('Coming Soon') %>
-        </div>
-        <div class="enrollment-opens">
-            <%- gettext('Enrollment Opens on') %>
-            <span class="enrollment-open-date">
-                <%- enrollment_open_date %>
-            </span>
+            <%- gettext('Not Currently Available') %>
         </div>
     <% } %>
 <% } %>
