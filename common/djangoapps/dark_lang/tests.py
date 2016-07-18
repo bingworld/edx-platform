@@ -44,6 +44,15 @@ class DarkLangMiddlewareTests(TestCase):
         ).save()
 
     def process_post(self, language_session_key=UNSET, accept=UNSET, preview_lang=UNSET, clear_lang=UNSET):
+        """
+        Build the POST request and set the language settings according to parameters
+
+        Args:
+            language_session_key (str): The language code to set in request.session[LANUGAGE_SESSION_KEY]
+            accept (str): The accept header to set in request.META['HTTP_ACCEPT_LANGUAGE']
+            preview_lang (str): The value to set in request.POST['preview_lang']
+            clear_lang (str): The value to set in request.POST['clear_lang']
+        """
         session = {}
         set_if_set(session, LANGUAGE_SESSION_KEY, language_session_key)
 
@@ -77,8 +86,7 @@ class DarkLangMiddlewareTests(TestCase):
         Args:
             language_session_key (str): The language code to set in request.session[LANUGAGE_SESSION_KEY]
             accept (str): The accept header to set in request.META['HTTP_ACCEPT_LANGUAGE']
-            preview_lang (str): The value to set in request.GET['preview_lang']
-            clear_lang (str): The value to set in request.GET['clear_lang']
+            post_request: Request object, from a previously completed post, this will contain the current session information
         """
         session = {}
         if post_request:
@@ -88,14 +96,6 @@ class DarkLangMiddlewareTests(TestCase):
 
         meta = {}
         set_if_set(meta, 'HTTP_ACCEPT_LANGUAGE', accept)
-
-        # post = {}
-        # set_if_set(post, 'preview_lang', preview_lang)
-
-        # if clear_lang is True:
-        #     set_if_set(post, 'reset', 'reset')
-        # else:
-        #     set_if_set(post, 'set_language', 'set_language')
 
         request = Mock(
             spec=HttpRequest,
