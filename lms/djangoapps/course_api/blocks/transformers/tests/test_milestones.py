@@ -223,14 +223,11 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             set(self.get_block_key_set(self.blocks, *expected_blocks)),
         )
 
-    @ddt.data(CourseStaffRole, OrgStaffRole, CourseInstructorRole, OrgInstructorRole)
-    def test_staff_access_gated(self, user_role):
-        expected_blocks = ('course', 'A', 'B', 'C', 'TimedExam', 'D', 'E', 'NotASpecialExam', 'H')
-        role = user_role(self.course.id)
-        role.add_users(self.user)
+    def test_staff_access_gated(self):
+        expected_blocks = self.ALL_BLOCKS
         self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['TimedExam'])
         block_structure = get_course_blocks(
-            self.user,
+            self.staff,
             self.course.location,
             self.transformers,
         )
@@ -239,14 +236,11 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             set(self.get_block_key_set(self.blocks, *expected_blocks)),
         )
 
-    @ddt.data(CourseStaffRole, OrgStaffRole, CourseInstructorRole, OrgInstructorRole)
-    def test_staff_access_proctored(self, user_role):
-        expected_blocks = ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'NotASpecialExam', 'H')
-        role = user_role(self.course.id)
-        role.add_users(self.user)
+    def test_staff_access_proctored(self):
+        expected_blocks = self.ALL_BLOCKS
         self.setup_proctored_exam(self.blocks['TimedExam'], ProctoredExamStudentAttemptStatus.rejected, self.user.id)
         block_structure = get_course_blocks(
-            self.user,
+            self.staff,
             self.course.location,
             self.transformers,
         )
