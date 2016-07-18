@@ -93,7 +93,7 @@ class Darklang(object):
     def set_preview_language(self, request):
         """
         Attempt to set the Preview language
-        :param preview_lang: The language code to set the Preview Langauge to
+        :param request: The Django Request Object
         :return dark language setting code
         """
         if not DarkLangConfig.current().enabled:

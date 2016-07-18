@@ -20,11 +20,10 @@ class DarkLangView(View):
 
     Expected Behavior:
     GET - returns a form for setting/resetting the user's dark language
-    POST - updates the setting to the given dark language
-    DELETE - removes the dark language settings and resets to default behavior
+    POST - updates or clears the setting to the given dark language
 
-    Note: This class and View are meant to replace DarkLang as a middleware, which was determined to be a
-    security risk.
+    Note: This class and View are meant to replace the ability to set the DarkLang in the middleware, which was
+    determined to be a security risk. (TNL-4742)
     """
     template_name = 'darklang/preview_lang.html'
 
@@ -43,6 +42,11 @@ class DarkLangView(View):
 
     @method_decorator(login_required)
     def post(self, request):
+        """
+        Sets or clears the DarkLang depending on the incoming post data.
+        :param request: The Django Request Object
+        :return: View to render
+        """
         context = {
             'disable_courseware_js': True,
             'uses_pattern_library': True
