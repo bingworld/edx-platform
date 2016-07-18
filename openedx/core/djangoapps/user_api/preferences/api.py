@@ -82,10 +82,7 @@ def get_user_preferences(requesting_user, username=None):
         "request": get_request_or_stub()
     }
     user_serializer = UserSerializer(existing_user, context=context)
-    try:
-        return user_serializer.data["preferences"]
-    except ObjectDoesNotExist:
-        return {}
+    return user_serializer.data["preferences"]
 
 
 @intercept_errors(UserAPIInternalError, ignore_errors=[UserAPIRequestError])

@@ -14,6 +14,7 @@ from xblock_django.user_service import (
 from student.models import anonymous_id_for_user
 from student.tests.factories import UserFactory, AnonymousUserFactory
 from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.user_api.preferences.api import set_user_preference
 
 
 class UserServiceTestCase(TestCase):
@@ -24,6 +25,9 @@ class UserServiceTestCase(TestCase):
         super(UserServiceTestCase, self).setUp()
         self.user = UserFactory(username="tester", email="test@tester.com")
         self.user.profile.name = "Test Tester"
+        set_user_preference(self.user, 'pref-lang', 'en')
+        set_user_preference(self.user, 'time_zone', 'US/Pacific')
+        set_user_preference(self.user, 'not_white_listed', 'hidden_value')
         self.anon_user = AnonymousUserFactory()
 
     def assert_is_anon_xb_user(self, xb_user):

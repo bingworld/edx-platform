@@ -4,7 +4,6 @@ Support for converting a django user to an XBlock user
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.user_api.preferences.api import get_user_preferences
-from openedx.core.djangoapps.user_api.errors import UserNotFound
 from student.models import anonymous_id_for_user, get_user_by_username_or_email
 from xblock.reference.user_service import XBlockUser, UserService
 
@@ -73,15 +72,12 @@ class DjangoXBlockUserService(UserService):
             xblock_user.opt_attrs[ATTR_KEY_USER_ID] = django_user.id
             xblock_user.opt_attrs[ATTR_KEY_USERNAME] = django_user.username
             xblock_user.opt_attrs[ATTR_KEY_USER_IS_STAFF] = django_user.user_is_staff
-            try:
-                user_preferences = get_user_preferences(django_user)
-                xblock_user.opt_attrs[ATTR_KEY_USER_PREFERENCES] = {
-                    pref: user_preferences.get(pref)
-                    for pref in USER_PREFERENCES_WHITE_LIST
-                    if pref in user_preferences
-                }
-            except UserNotFound:
-                xblock_user.opt_attrs[ATTR_KEY_USER_PREFERENCES] = {}
+            user_preferences = get_user_preferences(django_user)
+            xblock_user.opt_attrs[ATTR_KEY_USER_PREFERENCES] = {
+                pref: user_preferences.get(pref)
+                for pref in USER_PREFERENCES_WHITE_LIST
+                if pref in user_preferences
+            }
         else:
             xblock_user.opt_attrs[ATTR_KEY_IS_AUTHENTICATED] = False
 
