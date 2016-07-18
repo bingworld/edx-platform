@@ -20,12 +20,6 @@ from ..milestones import MilestonesTransformer
 from ...api import get_course_blocks
 from openedx.core.lib.gating import api as gating_api
 from milestones.tests.utils import MilestonesTestCaseMixin
-from student.roles import (
-    CourseStaffRole,
-    OrgStaffRole,
-    CourseInstructorRole,
-    OrgInstructorRole
-)
 
 
 @attr('shard_3')
@@ -91,13 +85,13 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
         Get a course hierarchy to test with.
         """
 
-        #                    course
-        #               /    |    \
-        #              /     |     \
-        #            A     Exam1   Exam2
-        #          /  \     / \      / \
-        #         /   \    /   \    /   \
-        #        B    C   D     E  F    G
+        #                           course
+        #               /       /             \         \
+        #              /       /               \         \
+        #            A     TimedExam   PracticeExam   NotASpecialExam
+        #          /  \     / \            / \              |
+        #         /   \    /   \          /   \             |
+        #        B    C   D     E        F    G             H
         #
         return [
             {

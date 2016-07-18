@@ -8,13 +8,6 @@ from edx_proctoring.api import get_attempt_status_summary
 from edx_proctoring.models import ProctoredExamStudentAttemptStatus
 from openedx.core.lib.block_structure.transformer import BlockStructureTransformer, FilteringTransformerMixin
 from util import milestones_helpers
-from courseware.masquerade import is_masquerading_as_student
-from courseware.access_utils import in_preview_mode
-from student.roles import (
-    GlobalStaff,
-    CourseStaffRole,
-    OrgStaffRole
-)
 
 
 class MilestonesTransformer(FilteringTransformerMixin, BlockStructureTransformer):
@@ -47,7 +40,7 @@ class MilestonesTransformer(FilteringTransformerMixin, BlockStructureTransformer
             Checks whether the user is gated from accessing this block, first via exam proctoring, then via a general
             milestones check.
             """
-            return not self.has_staff_access_to_course(block_key, usage_info.user) and (
+            return settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and not usage_info.has_staff_access and (
                 self.is_proctored_exam(block_key, usage_info, block_structure) or
                 self.has_pending_milestones_for_user(block_key, usage_info)
             )
@@ -73,8 +66,7 @@ class MilestonesTransformer(FilteringTransformerMixin, BlockStructureTransformer
                 unicode(block_key.course_key),
                 unicode(block_key),
             )
-            return settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and user_exam_summary \
-                and user_exam_summary['status'] != ProctoredExamStudentAttemptStatus.declined
+            return user_exam_summary and user_exam_summary['status'] != ProctoredExamStudentAttemptStatus.declined
         else:
             return False
 
@@ -90,20 +82,3 @@ class MilestonesTransformer(FilteringTransformerMixin, BlockStructureTransformer
             'requires',
             usage_info.user.id
         ))
-
-    @staticmethod
-    def has_staff_access_to_course(course_key, user):
-        """
-        Tests whether the current user has staff access to the block being passed in.
-        """
-        if user is None or (not user.is_authenticated()):
-            return False
-
-        if not in_preview_mode() and is_masquerading_as_student(user, course_key):
-            return False
-
-        return (
-            GlobalStaff().has_user(user) or
-            CourseStaffRole(course_key).has_user(user) or
-            OrgStaffRole(course_key.org).has_user(user)
-        )
