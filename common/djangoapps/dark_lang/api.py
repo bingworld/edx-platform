@@ -130,6 +130,7 @@ class Darklang(object):
         if LANGUAGE_SESSION_KEY in request.session:
             del request.session[LANGUAGE_SESSION_KEY]
 
+        user_pref = None
         if auth_user:
             # Reset user's dark lang preference to null
             delete_user_preference(request.user, DARK_LANGUAGE_KEY)

@@ -20,6 +20,7 @@ from django.utils.translation import LANGUAGE_SESSION_KEY
 
 from .api import Darklang
 
+
 class DarkLangMiddleware(object):
     """
     Middleware for dark-launching languages.
@@ -37,8 +38,6 @@ class DarkLangMiddleware(object):
 
         Darklang().clean_accept_headers(request)
         self._activate_preview_language(request)
-
-
 
     def _activate_preview_language(self, request):
         """

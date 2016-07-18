@@ -86,7 +86,8 @@ class DarkLangMiddlewareTests(TestCase):
         Args:
             language_session_key (str): The language code to set in request.session[LANUGAGE_SESSION_KEY]
             accept (str): The accept header to set in request.META['HTTP_ACCEPT_LANGUAGE']
-            post_request: Request object, from a previously completed post, this will contain the current session information
+            post_request: Request object, from a previously completed post, this will contain the current session
+            information
         """
         session = {}
         if post_request:
@@ -185,7 +186,7 @@ class DarkLangMiddlewareTests(TestCase):
         )
 
         DarkLangConfig(
-            released_languages=('REL-TER'),
+            released_languages='REL-TER',
             changed_by=self.user,
             enabled=True
         ).save()

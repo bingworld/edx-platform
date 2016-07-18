@@ -13,6 +13,7 @@ from .api import Darklang
 
 FORM_SET_MESSAGE = 'form_submit_message'
 
+
 @view_auth_classes()
 class DarkLangView(View):
     """
@@ -28,7 +29,7 @@ class DarkLangView(View):
     template_name = 'darklang/preview_lang.html'
 
     @method_decorator(login_required)
-    def get(self, request, error=None):
+    def get(self, request):
         """
         Displays the Form for setting/resetting a User's dark language setting
         :param request: The Django Request Object

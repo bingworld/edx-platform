@@ -47,6 +47,34 @@ class BaseI18nTestCase(TestCase):
             enabled=True
         ).save()
 
+    def user_creation_login(self):
+        # Create one user and save it to the database
+        email = 'test@edx.org'
+        pwd = 'test_password'
+        self.user = UserFactory.build(username='test', email=email)
+        self.user.set_password(pwd)
+        self.user.save()
+
+        # Create a registration for the user
+        RegistrationFactory(user=self.user)
+
+        # Create a profile for the user
+        UserProfileFactory(user=self.user)
+
+        # Create the test client
+        self.client = Client()
+
+        # Get the login url & log in our user
+        try:
+            login_url = reverse('login_post')
+        except NoReverseMatch:
+            login_url = reverse('login')
+        self.client.post(login_url, {'email': email, 'password': pwd})
+
+        # Url and site lang vars for tests to use
+        self.url = reverse('dashboard')
+        self.site_lang = settings.LANGUAGE_CODE
+
 
 @attr('shard_1')
 class I18nTestCase(BaseI18nTestCase):
@@ -87,10 +115,15 @@ class I18nRegressionTests(BaseI18nTestCase):
     """
     Tests for i18n
     """
+
+    def setUp(self):
+        super(I18nRegressionTests, self).setUp()
+        self.user_creation_login()
+
     def test_es419_acceptance(self):
         # Regression test; LOC-72, and an issue with Django
         self.release_languages('es-419')
-        response = self.client.get('/', HTTP_ACCEPT_LANGUAGE='es-419')
+        response = self.client.get('/courses', HTTP_ACCEPT_LANGUAGE='es-419')
         self.assert_tag_has_attr(response.content, "html", "lang", "es-419")
 
     def test_unreleased_lang_resolution(self):
@@ -101,11 +134,12 @@ class I18nRegressionTests(BaseI18nTestCase):
         # we want to keep 'fa-ir' as a dark language. Requesting 'fa-ir'
         # in the http request (NOT with the ?preview-lang query param) should
         # receive files for 'fa'
-        response = self.client.get('/', HTTP_ACCEPT_LANGUAGE='fa-ir')
+        response = self.client.get('/courses', HTTP_ACCEPT_LANGUAGE='fa-ir')
         self.assert_tag_has_attr(response.content, "html", "lang", "fa")
 
         # Now try to access with dark lang
-        response = self.client.get('/?preview-lang=fa-ir')
+        self.client.post('/update_lang/', {'preview_lang': 'fa-ir', 'set_language': 'set_language'})
+        response = self.client.get('/courses')
         self.assert_tag_has_attr(response.content, "html", "lang", "fa-ir")
 
     def test_preview_lang(self):
@@ -113,18 +147,24 @@ class I18nRegressionTests(BaseI18nTestCase):
         self.release_languages('es-419')
         site_lang = settings.LANGUAGE_CODE
         # Visit the front page; verify we see site default lang
-        response = self.client.get('/')
+        response = self.client.get('/courses')
         self.assert_tag_has_attr(response.content, "html", "lang", site_lang)
 
         # Verify we can switch language using the preview-lang query param
-        response = self.client.get('/?preview-lang=eo')
+        # Set the language
+        # self.client.post('/update_lang/', {'preview_lang': 'eo', 'set_language': 'set_language'})
+        self.client.post('/update_lang/', {'preview_lang': 'eo', 'set_language': 'set_language'})
+
+        response = self.client.get('/courses')
         self.assert_tag_has_attr(response.content, "html", "lang", "eo")
         # We should be able to see released languages using preview-lang, too
-        response = self.client.get('/?preview-lang=es-419')
+        self.client.post('/update_lang/', {'preview_lang': 'es-419', 'set_language': 'set_language'})
+        response = self.client.get('/courses')
         self.assert_tag_has_attr(response.content, "html", "lang", "es-419")
 
         # Clearing the language should go back to site default
-        response = self.client.get('/?clear-lang')
+        self.client.post('/update_lang/', {'reset': 'reset'})
+        response = self.client.get('/courses')
         self.assert_tag_has_attr(response.content, "html", "lang", site_lang)
 
 
@@ -137,32 +177,7 @@ class I18nLangPrefTests(BaseI18nTestCase):
     """
     def setUp(self):
         super(I18nLangPrefTests, self).setUp()
-        # Create one user and save it to the database
-        email = 'test@edx.org'
-        pwd = 'test_password'
-        self.user = UserFactory.build(username='test', email=email)
-        self.user.set_password(pwd)
-        self.user.save()
-
-        # Create a registration for the user
-        RegistrationFactory(user=self.user)
-
-        # Create a profile for the user
-        UserProfileFactory(user=self.user)
-
-        # Create the test client
-        self.client = Client()
-
-        # Get the login url & log in our user
-        try:
-            login_url = reverse('login_post')
-        except NoReverseMatch:
-            login_url = reverse('login')
-        self.client.post(login_url, {'email': email, 'password': pwd})
-
-        # Url and site lang vars for tests to use
-        self.url = reverse('dashboard')
-        self.site_lang = settings.LANGUAGE_CODE
+        self.user_creation_login()
 
     def test_lang_preference(self):
         # Regression test; LOC-87
@@ -190,12 +205,16 @@ class I18nLangPrefTests(BaseI18nTestCase):
         # Set user language preference
         set_user_preference(self.user, LANGUAGE_KEY, 'ar')
         # Verify preview-lang takes precedence
-        response = self.client.get('{}?preview-lang=eo'.format(self.url))
+        self.client.post('/update_lang/', {'preview_lang': 'eo', 'set_language': 'set_language'})
+        response = self.client.get('/courses'.format(self.url))
+
         self.assert_tag_has_attr(response.content, "html", "lang", 'eo')
         # Hitting another page should keep the dark language set.
         response = self.client.get(reverse('courses'))
         self.assert_tag_has_attr(response.content, "html", "lang", "eo")
 
         # Clearing language must set language back to preference language
-        response = self.client.get('{}?clear-lang'.format(self.url))
+        self.client.post('/update_lang/', {'reset': 'reset'})
+        response = self.client.get('/courses'.format(self.url))
+
         self.assert_tag_has_attr(response.content, "html", "lang", 'ar')
