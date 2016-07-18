@@ -901,20 +901,49 @@ div.problem {
 div.problem .action {
   margin-top: $baseline;
 
-  .save, .check, .show, .reset, .hint-button {
-    @include margin-right($baseline/2);
-    margin-bottom: ($baseline/2);
-    height: ($baseline*2);
-    vertical-align: middle;
-    text-transform: uppercase;
-    font-weight: 600;
-    @media print {
-      display: none;
+  // override default button hover
+  button.btn-brand {
+    &:hover {
+      background-image: none;
+      background-color: #0ea6ec;
+      box-shadow: none;
     }
   }
 
-  .save {
-    @extend .blue-button !optional;
+  button.btn-default {
+    &:hover {
+      background-image: none;
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  .problem-action-buttons-wrapper {
+    float: right;
+  }
+
+  .problem-action-button-wrapper {
+    padding-right: 5px;
+    border-right: 1px solid #ddd;
+    &:last-child {
+      border: none;
+    }
+  }
+
+  .save, .show, .reset, .hint-button {
+    @include margin-right($baseline/2);
+    margin-bottom: ($baseline/2);
+    vertical-align: middle;
+    @media print {
+      display: none;
+    }
+    .icon {
+      display: block;
+    }
+  }
+
+  .check {
+    float: left;
   }
 
   .show {
@@ -926,16 +955,11 @@ div.problem .action {
   }
 
   .submission_feedback {
-    // background: #F3F3F3;
-    // border: 1px solid #ddd;
-    // border-radius: 3px;
-    // padding: 8px 12px;
-    // margin-top: ($baseline/2);
     @include margin-left($baseline/2);
+    height: ($baseline*2);
     display: inline-block;
-    margin-top: 8px;
     color: $gray-d1;
-    font-style: italic;
+    font-size: 0.9em;;
     -webkit-font-smoothing: antialiased;
   }
 }
