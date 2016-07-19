@@ -36,21 +36,20 @@ class MilestonesTransformer(FilteringTransformerMixin, BlockStructureTransformer
         block_structure.request_xblock_fields('is_timed_exam')
 
     def transform_block_filters(self, usage_info, block_structure):
+        if usage_info.has_staff_access:
+            return [block_structure.create_universal_filter()]
+
         def user_gated_from_block(block_key):
             """
             Checks whether the user is gated from accessing this block, first via exam proctoring, then via timed exams,
             then via a general milestones check.
             """
-            return not usage_info.has_staff_access and (
-                (
-                    settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
-                    (
-                        self.is_proctored_exam(block_key, usage_info, block_structure) or
-                        self.is_timed_exam(block_key, block_structure)
-                    )
-                ) or
-                self.has_pending_milestones_for_user(block_key, usage_info)
-            )
+            return (
+                settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and (
+                    self.is_proctored_exam(block_key, usage_info, block_structure) or
+                    self.is_timed_exam(block_key, block_structure)
+                )
+            ) or self.has_pending_milestones_for_user(block_key, usage_info)
 
         return [block_structure.create_removal_filter(user_gated_from_block)]
 
