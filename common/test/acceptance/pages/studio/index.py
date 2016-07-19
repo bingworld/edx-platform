@@ -1,15 +1,42 @@
 """
-Studio Home page
+Studio Index, home and dashboard pages. These are the starting pages for users.
 """
-
 from bok_choy.page_object import PageObject
-from . import BASE_URL
 from selenium.webdriver import ActionChains
+
+from common.test.acceptance.pages.studio import BASE_URL
+from ...pages.studio.login import LoginPage
+from ...pages.studio.signup import SignupPage
+
+
+class HeaderMixin(object):
+    """Mixin class used for the pressing buttons in the header."""
+    def click_sign_up(self):
+        """Press the Sign Up button in the header. """
+        next_page = SignupPage(self.browser)
+        self.q(css='.action-signup')[0].click()
+        return next_page.wait_for_page()
+
+
+    def click_sign_in(self):
+        """Press the Sign In button in the header. """
+        next_page = LoginPage(self.browser)
+        self.q(css='.action-signin')[0].click()
+        return next_page.wait_for_page()
+
+
+class IndexPage(PageObject, HeaderMixin):
+    """Home page for Studio when not logged in."""
+    url = BASE_URL + "/"
+
+    def is_browser_on_page(self):
+        return self.q(css='.wrapper-text-welcome').visible
 
 
 class DashboardPage(PageObject):
     """
-    Studio Home page
+    Studio Dashboard page with courses.
+    The user must be logged in to access this page.
     """
 
     url = BASE_URL + "/course/"
@@ -235,6 +262,11 @@ class DashboardPage(PageObject):
             'Language selector element is available'
         )
         return self.q(css='#settings-language-value')
+
+
+class HomePage(DashboardPage):
+    """Home page for Studio when logged in. """
+    url = BASE_URL + "/home/"
 
 
 class DashboardPageWithPrograms(DashboardPage):

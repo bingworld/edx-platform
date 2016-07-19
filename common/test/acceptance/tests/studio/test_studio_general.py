@@ -1,46 +1,35 @@
 """
 Acceptance tests for Studio.
 """
-
 import uuid
 
 from bok_choy.web_app_test import WebAppTest
 
-from ...pages.studio.auto_auth import AutoAuthPage
-from ...pages.studio.course_info import CourseUpdatesPage
-from ...pages.studio.edit_tabs import PagesPage
-from ...pages.studio.import_export import ExportCoursePage, ImportCoursePage
-from ...pages.studio.howitworks import HowitworksPage
-from ...pages.studio.index import DashboardPage
-from ...pages.studio.login import LoginPage
-from ...pages.studio.users import CourseTeamPage
-from ...pages.studio.overview import CourseOutlinePage
-from ...pages.studio.settings import SettingsPage
-from ...pages.studio.settings_advanced import AdvancedSettingsPage
-from ...pages.studio.settings_graders import GradingPage
-from ...pages.studio.signup import SignupPage
-from ...pages.studio.textbook_upload import TextbookUploadPage
-from common.test.acceptance.tests.helpers import UniqueCourseTest
-from common.test.acceptance.pages.studio.signup import SignupPage
-from common.test.acceptance.pages.studio.utils import set_input_value
-from common.test.acceptance.fixtures.course import CourseFixture
-from common.test.acceptance.pages.studio.howitworks import HowitworksPage
-from common.test.acceptance.pages.studio.home import HomePage
-from common.test.acceptance.pages.common.utils import click_css
-from ...fixtures.course import XBlockFixtureDesc
-from common.test.acceptance.pages.studio.overview import CourseOutlineSignInRedirectPage
-
 from base_studio_test import StudioCourseTest
+from common.test.acceptance.fixtures.course import CourseFixture, XBlockFixtureDesc
+from common.test.acceptance.pages.studio.auto_auth import AutoAuthPage
+from common.test.acceptance.pages.studio.course_info import CourseUpdatesPage
+from common.test.acceptance.pages.studio.edit_tabs import PagesPage
+from common.test.acceptance.pages.studio.howitworks import HowitworksPage
+from common.test.acceptance.pages.studio.import_export import ExportCoursePage, ImportCoursePage
+from common.test.acceptance.pages.studio.index import DashboardPage, HomePage, IndexPage
+from common.test.acceptance.pages.studio.login import LoginPage, CourseOutlineSignInRedirectPage
+from common.test.acceptance.pages.studio.overview import CourseOutlinePage
+from common.test.acceptance.pages.studio.settings import SettingsPage
+from common.test.acceptance.pages.studio.settings_advanced import AdvancedSettingsPage
+from common.test.acceptance.pages.studio.settings_graders import GradingPage
+from common.test.acceptance.pages.studio.signup import SignupPage
+from common.test.acceptance.pages.studio.signup import SignupPage
+from common.test.acceptance.pages.studio.textbook_upload import TextbookUploadPage
+from common.test.acceptance.pages.studio.users import CourseTeamPage
+from common.test.acceptance.tests.helpers import UniqueCourseTest
 
 
 class LoggedOutTest(WebAppTest):
-    """
-    Smoke test for pages in Studio that are visible when logged out.
-    """
-
+    """Smoke test for pages in Studio that are visible when logged out. """
     def setUp(self):
         super(LoggedOutTest, self).setUp()
-        self.pages = [LoginPage(self.browser), HowitworksPage(self.browser), SignupPage(self.browser)]
+        self.pages = [LoginPage(self.browser), IndexPage(self.browser), SignupPage(self.browser)]
 
     def test_page_existence(self):
         """
@@ -53,22 +42,20 @@ class LoggedOutTest(WebAppTest):
 
 
 class LoggedInPagesTest(WebAppTest):
-    """
-    Tests that verify the pages in Studio that you can get to when logged
-    in and do not have a course yet.
-    """
-
+    """Verify the pages in Studio that you can get to when logged in and do not have a course yet."""
     def setUp(self):
         super(LoggedInPagesTest, self).setUp()
         self.auth_page = AutoAuthPage(self.browser, staff=True)
         self.dashboard_page = DashboardPage(self.browser)
+        self.home_page = HomePage(self.browser)
 
-    def test_dashboard_no_courses(self):
+    def test_logged_in_no_courses(self):
         """
-        Make sure that you can get to the dashboard page without a course.
+        Make sure that you can get to the dashboard and home pages without a course.
         """
         self.auth_page.visit()
         self.dashboard_page.visit()
+        self.home_page.visit()
 
 
 class SignUpAndSignInTest(UniqueCourseTest):
@@ -117,12 +104,10 @@ class SignUpAndSignInTest(UniqueCourseTest):
         And I press the Create My Account button on the registration form
         Then I should see an email verification prompt
         """
-        # HowitworksPage is the home page when user
-        # is not logged in. Visit it.
-        home_page = HowitworksPage(self.browser)
-        home_page.visit()
-        # Click sign up
-        click_css(page=home_page, css='.action.action-signup', source_index=0, require_notification=False)
+        index_page = IndexPage(self.browser)
+        index_page.visit()
+        index_page.click_sign_up()
+
         unique_number = uuid.uuid4().hex[:4]
         registration_dic = {
             '#email': '{}-email@host.com'.format(unique_number),
@@ -130,7 +115,6 @@ class SignUpAndSignInTest(UniqueCourseTest):
             '#username': '{}-username'.format(unique_number),
             '#password': '{}-password'.format(unique_number),
         }
-        self.sign_up_page.wait_for_page()
         # Register the user.
         self.sign_up_page.sign_up_user(registration_dic)
         home = HomePage(self.browser)
@@ -151,7 +135,7 @@ class SignUpAndSignInTest(UniqueCourseTest):
         course_url = self.course_outline_sign_in_redirect_page.url
         self.course_outline_sign_in_redirect_page.visit()
         # Login
-        self.login_page.login(self.user['email'], self.user['password'])
+        self.course_outline_sign_in_redirect_page.login(self.user['email'], self.user['password'])
         self.course_outline_page.wait_for_page()
         # Verify that correct course is displayed after sign in.
         self.assertEqual(self.browser.current_url, course_url)
@@ -171,9 +155,10 @@ class SignUpAndSignInTest(UniqueCourseTest):
         # Change redirect url
         self.browser.get(self.browser.current_url.split('=')[0] + '=http://www.google.com')
         # Login
-        self.login_page.login(self.user['email'], self.user['password'])
+        self.course_outline_sign_in_redirect_page.login(self.user['email'], self.user['password'])
         home = HomePage(self.browser)
         home.wait_for_page()
+        self.assertEqual(self.browser.current_url, home.url)
 
     def test_login_with_mistyped_credentials(self):
         """
@@ -194,17 +179,30 @@ class SignUpAndSignInTest(UniqueCourseTest):
         self.install_course_fixture()
         self.course_outline_sign_in_redirect_page.visit()
         # Verify login_error is not present
-        self.login_page.wait_for_element_absence('#login_error', 'Login error not be present')
+        self.course_outline_sign_in_redirect_page.wait_for_element_absence(
+            '#login_error',
+            'Login error not be present'
+        )
         # Login with wrong credentials
-        self.login_page.login(self.user['email'], 'wrong_password')
-        # Verity that login error is shown
-        self.login_page.wait_for_element_visibility('#login_error', 'Login error is visible')
+        self.course_outline_sign_in_redirect_page.login(
+            self.user['email'],
+            'wrong_password',
+            expect_success=False
+        )
+        # Verify that login error is shown
+        self.course_outline_sign_in_redirect_page.wait_for_element_visibility(
+            '#login_error',
+            'Login error is visible'
+        )
         # Change the password
-        set_input_value(self.login_page, 'input#password', 'changed_password')
-        # Login error should bot be visible
-        self.login_page.wait_for_element_invisibility('#login_error', 'Login error is not visible')
+        self.course_outline_sign_in_redirect_page.fill_field('input#password', 'changed_password')
+        # Login error should not be visible
+        self.course_outline_sign_in_redirect_page.wait_for_element_invisibility(
+            '#login_error',
+            'Login error is not visible'
+        )
         # Login with correct credentials
-        self.login_page.login(self.user['email'], self.user['password'])
+        self.course_outline_sign_in_redirect_page.login(self.user['email'], self.user['password'])
         self.course_outline_page.wait_for_page()
         # Verify that correct course is displayed after sign in.
         self.assertEqual(self.browser.current_url, self.course_outline_page.url)

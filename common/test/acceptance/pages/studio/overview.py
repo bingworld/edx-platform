@@ -845,15 +845,6 @@ class CourseOutlinePage(CoursePage, CourseOutlineContainer):
         return self.q(css='.advance-modules-list li').text
 
 
-class CourseOutlineSignInRedirectPage(CourseOutlinePage):
-    """
-    This class may be used when user is not signed
-    in and accesses the course.
-    """
-    def is_browser_on_page(self):
-        return self.q(css='body.view-signin').visible
-
-
 class CourseOutlineModal(object):
     """
     Page object specifically for a modal window on the course outline page.
