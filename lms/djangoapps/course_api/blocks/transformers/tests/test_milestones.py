@@ -1,7 +1,7 @@
 """
 Tests for ProctoredExamTransformer.
 """
-from mock import patch
+from mock import patch, Mock
 from nose.plugins.attrib import attr
 
 import ddt
@@ -13,7 +13,9 @@ from edx_proctoring.api import (
 from edx_proctoring.models import ProctoredExamStudentAttemptStatus
 from edx_proctoring.runtime import set_runtime_service
 from edx_proctoring.tests.test_services import MockCreditService
+from gating import api as lms_gating_api
 from lms.djangoapps.course_blocks.transformers.tests.helpers import CourseStructureTestCase
+from opaque_keys.edx.keys import UsageKey
 from student.tests.factories import CourseEnrollmentFactory
 
 from ..milestones import MilestonesTransformer
@@ -78,20 +80,24 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
         gating_api.add_prerequisite(self.course.id, unicode(gating_block.location))
         gating_api.set_required_content(self.course.id, gated_block.location, gating_block.location, 100)
 
-    ALL_BLOCKS = ('course', 'A', 'B', 'C', 'TimedExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'NotASpecialExam', 'H')
+    ALL_BLOCKS = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I',
+                  'TimedExam', 'J', 'K')
+
+    # The timed exam should never be visible to students
+    ALL_BLOCKS_EXCEPT_TIMED = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I')
 
     def get_course_hierarchy(self):
         """
         Get a course hierarchy to test with.
         """
 
-        #                           course
-        #               /       /             \         \
-        #              /       /               \         \
-        #            A     TimedExam   PracticeExam   NotASpecialExam
-        #          /  \     / \            / \              |
-        #         /   \    /   \          /   \             |
-        #        B    C   D     E        F    G             H
+        #                                course
+        #               /       /             \         \   \
+        #              /       /               \         \   \
+        #            A     ProctoredExam   PracticeExam   H  TimedExam
+        #          /  \     / \            / \            |     /  \
+        #         /   \    /   \          /   \           |    /    \
+        #        B    C   D     E        F    G           I    J     K
         #
         return [
             {
@@ -111,7 +117,7 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             },
             {
                 '#type': 'sequential',
-                '#ref': 'TimedExam',
+                '#ref': 'ProctoredExam',
                 'is_time_limited': True,
                 'is_proctored_enabled': True,
                 'is_practice_exam': False,
@@ -133,108 +139,138 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             },
             {
                 '#type': 'sequential',
-                '#ref': 'NotASpecialExam',
+                '#ref': 'H',
                 '#children': [
-                    {'#type': 'vertical', '#ref': 'H'},
+                    {'#type': 'vertical', '#ref': 'I'},
+                ],
+            },
+            {
+                '#type': 'sequential',
+                '#ref': 'TimedExam',
+                'is_time_limited': True,
+                'is_proctored_enabled': False,
+                'is_practice_exam': False,
+                '#children': [
+                    {'#type': 'vertical', '#ref': 'J'},
+                    {'#type': 'vertical', '#ref': 'K'},
                 ],
             },
         ]
 
     def test_exam_not_created(self):
-        block_structure = get_course_blocks(
-            self.user,
-            self.course.location,
-            self.transformers,
-        )
-        self.assertEqual(
-            set(block_structure.get_block_keys()),
-            set(self.get_block_key_set(self.blocks, *self.ALL_BLOCKS)),
-        )
+        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_TIMED)
 
     @ddt.data(
         (
-            'TimedExam',
+            'ProctoredExam',
             ProctoredExamStudentAttemptStatus.declined,
-            ALL_BLOCKS,
+            ALL_BLOCKS_EXCEPT_TIMED
         ),
         (
-            'TimedExam',
+            'ProctoredExam',
             ProctoredExamStudentAttemptStatus.submitted,
-            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'NotASpecialExam', 'H'),
+            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'H', 'I'),
         ),
         (
-            'TimedExam',
+            'ProctoredExam',
             ProctoredExamStudentAttemptStatus.rejected,
-            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'NotASpecialExam', 'H'),
+            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'H', 'I'),
         ),
         (
             'PracticeExam',
             ProctoredExamStudentAttemptStatus.declined,
-            ALL_BLOCKS,
+            ALL_BLOCKS_EXCEPT_TIMED
         ),
         (
             'PracticeExam',
             ProctoredExamStudentAttemptStatus.rejected,
-            ('course', 'A', 'B', 'C', 'TimedExam', 'D', 'E', 'NotASpecialExam', 'H'),
+            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'H', 'I'),
         ),
     )
     @ddt.unpack
     def test_exam_created(self, exam_ref, attempt_status, expected_blocks):
         self.setup_proctored_exam(self.blocks[exam_ref], attempt_status, self.user.id)
-        block_structure = get_course_blocks(
-            self.user,
-            self.course.location,
-            self.transformers,
-        )
-        self.assertEqual(
-            set(block_structure.get_block_keys()),
-            set(self.get_block_key_set(self.blocks, *expected_blocks)),
-        )
+        self.get_blocks_and_check_against_expected(self.user, expected_blocks)
 
-    def test_special_exam_gated(self):
-        expected_blocks = ('course', 'A', 'B', 'C', 'TimedExam', 'D', 'E', 'NotASpecialExam', 'H')
-        self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['TimedExam'])
-        block_structure = get_course_blocks(
-            self.user,
-            self.course.location,
-            self.transformers,
-        )
-        self.assertEqual(
-            set(block_structure.get_block_keys()),
-            set(self.get_block_key_set(self.blocks, *expected_blocks)),
-        )
+    @ddt.data(
+        (
+            'PracticeExam',
+            'ProctoredExam',
+            'D',
+            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'H', 'I')
+        ),
+        (
+            'H',
+            'ProctoredExam',
+            'D',
+            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G'),
+        ),
+    )
+    @ddt.unpack
+    def test_gated(self, gated_block_ref, gating_block_ref, gating_block_child, expected_blocks_before_completion):
+        """
+        First, checks that a student cannot see the gated block when it is gated by the gating block and no
+        attempt has been made to complete the gating block.
+        Then, checks that the student can see the gated block after the gating block has been completed.
 
-    def test_not_special_exam_gated(self):
-        expected_blocks = ('course', 'A', 'B', 'C', 'TimedExam', 'D', 'E', 'PracticeExam', 'F', 'G')
-        self.setup_gated_section(self.blocks['NotASpecialExam'], self.blocks['TimedExam'])
-        block_structure = get_course_blocks(
-            self.user,
-            self.course.location,
-            self.transformers,
-        )
-        self.assertEqual(
-            set(block_structure.get_block_keys()),
-            set(self.get_block_key_set(self.blocks, *expected_blocks)),
-        )
+        expected_blocks_before_completion is the set of blocks we expect to be visible to the student
+        before the student has completed the gating block.
+
+        The test data includes one special exam and one non-special block.
+        """
+        self.course.enable_subsection_gating = True
+        self.setup_gated_section(self.blocks[gated_block_ref], self.blocks[gating_block_ref])
+        self.get_blocks_and_check_against_expected(self.user, expected_blocks_before_completion)
+
+        # mock the api that the lms gating api calls to get the score for each block to always return 1 (ie 100%)
+        import courseware
+        courseware.grades.get_module_score = Mock(return_value=1)
+
+        # this call triggers reevaluation of prerequisites fulfilled by the parent of the
+        # block passed in, so we pass in a child of the gating block
+        lms_gating_api.evaluate_prerequisite(
+            self.course,
+            UsageKey.from_string(unicode(self.blocks[gating_block_child].location)),
+            self.user.id)
+
+        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_TIMED)
 
     def test_staff_access_gated(self):
+        self.course.enable_subsection_gating = True
         expected_blocks = self.ALL_BLOCKS
-        self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['TimedExam'])
-        block_structure = get_course_blocks(
-            self.staff,
-            self.course.location,
-            self.transformers,
-        )
-        self.assertEqual(
-            set(block_structure.get_block_keys()),
-            set(self.get_block_key_set(self.blocks, *expected_blocks)),
-        )
+        self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['ProctoredExam'])
+        self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
 
     def test_staff_access_proctored(self):
         expected_blocks = self.ALL_BLOCKS
-        self.setup_proctored_exam(self.blocks['TimedExam'], ProctoredExamStudentAttemptStatus.rejected, self.user.id)
+        self.setup_proctored_exam(
+            self.blocks['ProctoredExam'],
+            ProctoredExamStudentAttemptStatus.rejected,
+            self.user.id
+        )
+        self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
+
+    def test_timed_exam(self):
+        expected_blocks = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I')
+        self.get_blocks_and_check_against_expected(self.user, expected_blocks)
+
+    def test_staff_access_timed_exam(self):
+        """
+        This is tested implicitly in the other staff
+        access tests but is made explicit here. Staff
+        should always be able to view the un-proctored,
+        timed exam.
+        """
+        expected_blocks = self.ALL_BLOCKS
+        self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
+
+    def get_blocks_and_check_against_expected(self, user, expected_blocks):
+        """
+        Calls the course API as the specified user and checks the
+        output against a specified set of expected blocks.
+        """
         block_structure = get_course_blocks(
-            self.staff,
+            user,
             self.course.location,
             self.transformers,
         )
