@@ -22,7 +22,7 @@ class BaseI18nTestCase(TestCase):
     Base utilities for i18n test classes to derive from
     """
     def __init__(self, *args, **kwargs):
-        super(TestCase, self).__init__(*args, **kwargs)
+        super(BaseI18nTestCase, self).__init__(*args, **kwargs)
         self.user = User()
         self.client = Client()
         self.url = ''
