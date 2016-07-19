@@ -1,3 +1,7 @@
+"""
+Contains all the URLs for the Dark Language Support App
+"""
+
 from django.conf.urls import patterns, url
 
 from dark_lang import views

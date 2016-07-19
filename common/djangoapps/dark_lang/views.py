@@ -57,5 +57,3 @@ class DarkLangView(View):
         if result is not None:
             context.update({FORM_SET_MESSAGE: result})
         return render_to_response(self.template_name, context)
-
-

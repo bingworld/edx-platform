@@ -21,7 +21,6 @@ class BaseI18nTestCase(TestCase):
     """
     Base utilities for i18n test classes to derive from
     """
-
     def setUp(self):
         super(BaseI18nTestCase, self).setUp()
         self.addCleanup(translation.deactivate)
@@ -48,6 +47,9 @@ class BaseI18nTestCase(TestCase):
         ).save()
 
     def user_creation_login(self):
+        """
+        Creates the user log in and then authenticates the user
+        """
         # Create one user and save it to the database
         email = 'test@edx.org'
         pwd = 'test_password'
@@ -206,7 +208,7 @@ class I18nLangPrefTests(BaseI18nTestCase):
         set_user_preference(self.user, LANGUAGE_KEY, 'ar')
         # Verify preview-lang takes precedence
         self.client.post('/update_lang/', {'preview_lang': 'eo', 'set_language': 'set_language'})
-        response = self.client.get('/courses'.format(self.url))
+        response = self.client.get('/courses/')
 
         self.assert_tag_has_attr(response.content, "html", "lang", 'eo')
         # Hitting another page should keep the dark language set.
@@ -215,6 +217,6 @@ class I18nLangPrefTests(BaseI18nTestCase):
 
         # Clearing language must set language back to preference language
         self.client.post('/update_lang/', {'reset': 'reset'})
-        response = self.client.get('/courses'.format(self.url))
+        response = self.client.get('/courses/')
 
         self.assert_tag_has_attr(response.content, "html", "lang", 'ar')
