@@ -12,6 +12,7 @@ from openedx.core.djangoapps.credit.models import CreditCourse
 from openedx.core.djangoapps.credit.api.eligibility import set_credit_requirements
 
 from student.models import CourseEnrollment, UserProfile
+from student.tests.factories import UserFactory
 
 
 @attr('shard_2')
@@ -26,7 +27,7 @@ class CreditServiceTests(ModuleStoreTestCase):
         self.service = CreditService()
         self.course = CourseFactory.create(org='edX', number='DemoX', display_name='Demo_Course')
         self.credit_course = CreditCourse.objects.create(course_key=self.course.id, enabled=True)
-        self.profile = UserProfile.objects.create(user_id=self.user.id, name='Foo Bar')
+        self.user = UserFactory(first_name="Foo", last_name="Bar")
 
     def enroll(self, course_id=None):
         """

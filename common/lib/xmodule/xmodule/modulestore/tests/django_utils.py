@@ -18,6 +18,7 @@ from django.test.utils import override_settings
 
 from courseware.field_overrides import OverrideFieldData  # pylint: disable=import-error
 from openedx.core.lib.tempdir import mkdtemp_clean
+from student.tests.factories import UserFactory
 
 from xmodule.contentstore.django import _CONTENTSTORE
 from xmodule.modulestore import ModuleStoreEnum
@@ -412,7 +413,7 @@ class ModuleStoreTestCase(ModuleStoreIsolationMixin, TestCase):
 
         if self.CREATE_USER:
             # Create the user so we can log them in.
-            self.user = User.objects.create_user(uname, email, self.user_password)
+            self.user = UserFactory(username=uname, email=email, password=self.user_password)
 
             # Note that we do not actually need to do anything
             # for registration if we directly mark them active.
@@ -429,7 +430,7 @@ class ModuleStoreTestCase(ModuleStoreIsolationMixin, TestCase):
         """
         uname = 'teststudent'
         password = 'foo'
-        nonstaff_user = User.objects.create_user(uname, 'test+student@edx.org', password)
+        nonstaff_user = UserFactory(username=uname, email='test+student@edx.org', password=password)
 
         # Note that we do not actually need to do anything
         # for registration if we directly mark them active.
