@@ -21,6 +21,13 @@ class BaseI18nTestCase(TestCase):
     """
     Base utilities for i18n test classes to derive from
     """
+    def __init__(self, *args, **kwargs):
+        super(TestCase, self).__init__(*args, **kwargs)
+        self.user = User()
+        self.client = Client()
+        self.url = ''
+        self.site_lang = settings.LANGUAGE_CODE
+
     def setUp(self):
         super(BaseI18nTestCase, self).setUp()
         self.addCleanup(translation.deactivate)
