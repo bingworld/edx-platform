@@ -22,6 +22,7 @@ from ..milestones import MilestonesTransformer
 from ...api import get_course_blocks
 from openedx.core.lib.gating import api as gating_api
 from milestones.tests.utils import MilestonesTestCaseMixin
+import courseware
 
 
 @attr('shard_3')
@@ -80,11 +81,12 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
         gating_api.add_prerequisite(self.course.id, unicode(gating_block.location))
         gating_api.set_required_content(self.course.id, gated_block.location, gating_block.location, 100)
 
-    ALL_BLOCKS = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I',
-                  'TimedExam', 'J', 'K')
+    ALL_BLOCKS = (
+        'course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I', 'TimedExam', 'J', 'K'
+    )
 
-    # The timed exam should never be visible to students
-    ALL_BLOCKS_EXCEPT_TIMED = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I')
+    # The special exams (proctored, practice, timed) should never be visible to students
+    ALL_BLOCKS_EXCEPT_SPECIAL = ('course', 'A', 'B', 'C', 'H', 'I')
 
     def get_course_hierarchy(self):
         """
@@ -157,53 +159,21 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             },
         ]
 
-    def test_exam_not_created(self):
-        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_TIMED)
+    def test_special_exams_not_visible_to_non_staff(self):
+        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_SPECIAL)
 
     @ddt.data(
         (
-            'ProctoredExam',
-            ProctoredExamStudentAttemptStatus.declined,
-            ALL_BLOCKS_EXCEPT_TIMED
-        ),
-        (
-            'ProctoredExam',
-            ProctoredExamStudentAttemptStatus.submitted,
-            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'H', 'I'),
-        ),
-        (
-            'ProctoredExam',
-            ProctoredExamStudentAttemptStatus.rejected,
-            ('course', 'A', 'B', 'C', 'PracticeExam', 'F', 'G', 'H', 'I'),
-        ),
-        (
-            'PracticeExam',
-            ProctoredExamStudentAttemptStatus.declined,
-            ALL_BLOCKS_EXCEPT_TIMED
-        ),
-        (
-            'PracticeExam',
-            ProctoredExamStudentAttemptStatus.rejected,
-            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'H', 'I'),
-        ),
-    )
-    @ddt.unpack
-    def test_exam_created(self, exam_ref, attempt_status, expected_blocks):
-        self.setup_proctored_exam(self.blocks[exam_ref], attempt_status, self.user.id)
-        self.get_blocks_and_check_against_expected(self.user, expected_blocks)
-
-    @ddt.data(
-        (
-            'PracticeExam',
-            'ProctoredExam',
-            'D',
-            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'H', 'I')
+            'H',
+            'A',
+            'B',
+            ('course', 'A', 'B', 'C',)
         ),
         (
             'H',
             'ProctoredExam',
             'D',
-            ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G'),
+            ('course', 'A', 'B', 'C'),
         ),
     )
     @ddt.unpack
@@ -216,14 +186,13 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
         expected_blocks_before_completion is the set of blocks we expect to be visible to the student
         before the student has completed the gating block.
 
-        The test data includes one special exam and one non-special block.
+        The test data includes one special exam and one non-special block as the gating blocks.
         """
         self.course.enable_subsection_gating = True
         self.setup_gated_section(self.blocks[gated_block_ref], self.blocks[gating_block_ref])
         self.get_blocks_and_check_against_expected(self.user, expected_blocks_before_completion)
 
         # mock the api that the lms gating api calls to get the score for each block to always return 1 (ie 100%)
-        import courseware
         courseware.grades.get_module_score = Mock(return_value=1)
 
         # this call triggers reevaluation of prerequisites fulfilled by the parent of the
@@ -233,35 +202,20 @@ class MilestonesTransformerTestCase(CourseStructureTestCase, MilestonesTestCaseM
             UsageKey.from_string(unicode(self.blocks[gating_block_child].location)),
             self.user.id)
 
-        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_TIMED)
-
-    def test_staff_access_gated(self):
-        self.course.enable_subsection_gating = True
-        expected_blocks = self.ALL_BLOCKS
-        self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['ProctoredExam'])
-        self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
+        self.get_blocks_and_check_against_expected(self.user, self.ALL_BLOCKS_EXCEPT_SPECIAL)
 
     def test_staff_access_proctored(self):
+        """
+        Ensures that staff can always access all blocks in the course,
+        regardless of gating or proctoring.
+        """
         expected_blocks = self.ALL_BLOCKS
         self.setup_proctored_exam(
             self.blocks['ProctoredExam'],
             ProctoredExamStudentAttemptStatus.rejected,
             self.user.id
         )
-        self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
-
-    def test_timed_exam(self):
-        expected_blocks = ('course', 'A', 'B', 'C', 'ProctoredExam', 'D', 'E', 'PracticeExam', 'F', 'G', 'H', 'I')
-        self.get_blocks_and_check_against_expected(self.user, expected_blocks)
-
-    def test_staff_access_timed_exam(self):
-        """
-        This is tested implicitly in the other staff
-        access tests but is made explicit here. Staff
-        should always be able to view the un-proctored,
-        timed exam.
-        """
-        expected_blocks = self.ALL_BLOCKS
+        self.setup_gated_section(self.blocks['PracticeExam'], self.blocks['ProctoredExam'])
         self.get_blocks_and_check_against_expected(self.staff, expected_blocks)
 
     def get_blocks_and_check_against_expected(self, user, expected_blocks):
