@@ -5,6 +5,7 @@ import mock
 from opaque_keys.edx.keys import CourseKey
 
 from openedx.core.djangoapps.catalog import utils
+from openedx.core.djangoapps.catalog.models import CatalogIntegration
 from openedx.core.djangoapps.catalog.tests import factories, mixins
 from student.tests.factories import UserFactory
 
@@ -66,6 +67,13 @@ class TestGetCourseRun(mixins.CatalogIntegrationMixin, TestCase):
         _, kwargs = mock_get_catalog_data.call_args
 
         self.assertEqual(kwargs['cache_key'], catalog_integration.CACHE_KEY)
+
+    def test_config_missing(self, mock_get_catalog_data):
+        """Verify that no errors occur if this method is called when catalog config is missing."""
+        CatalogIntegration.objects.all().delete()
+
+        data = utils.get_course_run(self.course_key, self.user)
+        self.assertEqual(data, {})
 
 
 @mock.patch(UTILS_MODULE + '.get_course_run')
